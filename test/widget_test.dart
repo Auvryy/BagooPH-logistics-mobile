@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:bagoo_scanner_mobile/main.dart';
 import 'package:bagoo_scanner_mobile/models/scan_result.dart';
@@ -27,8 +28,11 @@ void main() {
     expect(errResult.chute, 'REJECT / EXCEPTION');
   });
 
-  testWidgets('BagooScannerApp renders login screen when unauthenticated', (WidgetTester tester) async {
+  testWidgets('BagooScannerApp renders login screen when unauthenticated', (
+    WidgetTester tester,
+  ) async {
     SharedPreferences.setMockInitialValues({});
+    FlutterSecureStorage.setMockInitialValues({});
     final storage = await StorageService.init();
     final api = ApiService(storage);
 
