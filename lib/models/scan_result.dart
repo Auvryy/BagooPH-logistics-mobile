@@ -3,6 +3,8 @@ class ScanResult {
   final String barcode;
   final String? action;
   final String? nextStatus;
+  final String? expectedStatus;
+  final bool requiresConfirmation;
   final String message;
   final bool isError;
   final String? chute;
@@ -23,6 +25,8 @@ class ScanResult {
     required this.barcode,
     this.action,
     this.nextStatus,
+    this.expectedStatus,
+    this.requiresConfirmation = false,
     required this.message,
     this.isError = false,
     this.chute,
@@ -40,39 +44,65 @@ class ScanResult {
   });
 
   factory ScanResult.fromJson(Map<String, dynamic> json, String scannedCode) {
+    Map<String, dynamic>? object(dynamic value) =>
+        value is Map ? Map<String, dynamic>.from(value) : null;
+    final delivery = object(json['delivery']) ?? object(json['data']);
+    final prompt = object(json['prompt']) ?? object(delivery?['prompt']);
+    final dws = object(delivery?['dws']);
+    final bag = object(json['bag']) ?? object(delivery?['mother_bag_slotting']);
+    final hop = object(json['next_hop']) ?? object(delivery?['next_hop']);
+    final buyer = object(delivery?['buyer']);
     final success = json['success'] == true;
-    final data = json['data'] as Map<String, dynamic>?;
-    final dws = data?['dws'] as Map<String, dynamic>?;
-    final motherBag = data?['mother_bag_slotting'] as Map<String, dynamic>?;
-    final nextHop = data?['next_hop'] as Map<String, dynamic>?;
-
+    String? text(dynamic value) =>
+        value is String && value.isNotEmpty ? value : null;
+    double? number(dynamic value) => value is num ? value.toDouble() : null;
     return ScanResult(
       success: success,
       barcode: scannedCode,
-      action: data?['prompt']?['action'] as String? ?? 'INSPECT_WAYBILL',
-      nextStatus: data?['prompt']?['next_status'] as String?,
-      message: (json['message'] as String?) ??
-          (success ? 'Parcel verified successfully.' : 'Scan failed.'),
+      action: text(prompt?['action']),
+      nextStatus: text(prompt?['next_status']),
+      expectedStatus: text(prompt?['expected_status']),
+      requiresConfirmation: prompt?['requires_confirmation'] == true,
+      message:
+          text(json['message']) ??
+          (success
+              ? 'Waybill inspected.'
+              : 'The server did not confirm this scan.'),
       isError: !success,
-      chute: dws?['chute'] as String? ?? 'CHUTE-01',
-      nextFacility: nextHop?['hub_name'] as String? ??
-          dws?['next_facility_name'] as String? ??
-          'Destination Station',
-      recommendedBin: nextHop?['recommended_bin'] as String? ?? 'BIN-DEFAULT',
-      motherBagReference: motherBag?['reference'] as String?,
-      sealNumber: motherBag?['seal_number'] as String?,
-      bagParcelCount: motherBag?['parcel_count'] as int?,
-      bagMaxParcels: motherBag?['max_parcels'] as int? ?? 50,
-      weightKg: (dws?['actual_weight_kg'] as num?)?.toDouble() ?? 0.8,
-      volumetricWeightKg:
-          (dws?['volumetric_weight_kg'] as num?)?.toDouble() ?? 1.2,
-      chargeableWeightKg:
-          (dws?['chargeable_weight_kg'] as num?)?.toDouble() ?? 1.2,
-      dimensions: dws != null
-          ? '${dws['length_cm']}x${dws['width_cm']}x${dws['height_cm']} cm'
-          : '25x18x12 cm',
-      destinationAddress: data?['order']?['destination_barangay'] as String? ??
-          'Santa Cruz, Laguna',
+      chute: text(dws?['chute']),
+      nextFacility:
+          text(hop?['hub_name']) ??
+          text(bag?['destination_hub']) ??
+          text(dws?['next_facility_name']),
+      recommendedBin:
+          text(hop?['recommended_bin']) ?? text(delivery?['destination_bin']),
+      motherBagReference: text(bag?['reference']),
+      sealNumber: text(bag?['seal_number']),
+      bagParcelCount: bag?['parcel_count'] is int
+          ? bag!['parcel_count'] as int
+          : null,
+      bagMaxParcels: bag?['max_parcels'] is int
+          ? bag!['max_parcels'] as int
+          : null,
+      weightKg: number(dws?['actual_weight_kg']),
+      volumetricWeightKg: number(dws?['volumetric_weight_kg']),
+      chargeableWeightKg: number(dws?['chargeable_weight_kg']),
+      dimensions:
+          dws?['length_cm'] is num &&
+              dws?['width_cm'] is num &&
+              dws?['height_cm'] is num
+          ? '${dws!['length_cm']} × ${dws['width_cm']} × ${dws['height_cm']} cm'
+          : null,
+      destinationAddress:
+          [
+            text(buyer?['barangay']),
+            text(buyer?['city']),
+          ].whereType<String>().join(', ').isEmpty
+          ? null
+          : [
+              text(buyer?['barangay']),
+              text(buyer?['city']),
+            ].whereType<String>().join(', '),
     );
   }
 
