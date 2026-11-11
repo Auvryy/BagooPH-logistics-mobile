@@ -1,18 +1,17 @@
 import 'package:flutter/material.dart';
+
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
 import '../theme/app_colors.dart';
 import 'scanner_screen.dart';
+import 'hub_selection_screen.dart';
+import 'staff_activation_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   final StorageService storage;
   final ApiService api;
 
-  const LoginScreen({
-    super.key,
-    required this.storage,
-    required this.api,
-  });
+  const LoginScreen({super.key, required this.storage, required this.api});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -29,8 +28,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    _emailController.text = widget.storage.getUserEmail() ?? 'operator@bagoo.test';
-    _passwordController.text = 'Password1234!';
+    _emailController.text = widget.storage.getUserEmail() ?? '';
     _serverController.text = widget.storage.getServerUrl();
   }
 
@@ -50,6 +48,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       if (demo) {
+        await widget.storage.clearAuth();
         await widget.storage.setDemoMode(true);
         await widget.storage.setUserEmail('operator.demo@bagoo.ph');
         await widget.storage.setUserName('Station Operator (Demo)');
@@ -64,7 +63,7 @@ class _LoginScreenState extends State<LoginScreen> {
       final serverUrl = _serverController.text.trim();
       if (serverUrl.isNotEmpty) {
         await widget.storage.setServerUrl(serverUrl);
-        widget.api.updateBaseUrl(serverUrl);
+        widget.api.updateBaseUrl(widget.storage.getServerUrl());
       }
 
       await widget.storage.setDemoMode(false);
@@ -73,6 +72,7 @@ class _LoginScreenState extends State<LoginScreen> {
         _passwordController.text,
       );
 
+      if (!mounted) return;
       if (result['success'] == true) {
         if (mounted) {
           _navigateToScanner();
@@ -83,6 +83,7 @@ class _LoginScreenState extends State<LoginScreen> {
         });
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _errorMessage = e.toString();
       });
@@ -90,6 +91,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (mounted) {
         setState(() {
           _isLoading = false;
+          _passwordController.clear();
         });
       }
     }
@@ -98,10 +100,10 @@ class _LoginScreenState extends State<LoginScreen> {
   void _navigateToScanner() {
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
-        builder: (_) => ScannerScreen(
-          storage: widget.storage,
-          api: widget.api,
-        ),
+        builder: (_) =>
+            !widget.storage.isDemoMode() && widget.storage.getHubId() == null
+            ? HubSelectionScreen(storage: widget.storage, api: widget.api)
+            : ScannerScreen(storage: widget.storage, api: widget.api),
       ),
     );
   }
@@ -113,19 +115,56 @@ class _LoginScreenState extends State<LoginScreen> {
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 24.0,
+              vertical: 32.0,
+            ),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 440),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  TextButton.icon(
+                    onPressed: _isLoading
+                        ? null
+                        : () async {
+                            try {
+                              await widget.storage.setServerUrl(
+                                _serverController.text.trim(),
+                              );
+                              widget.api.updateBaseUrl(
+                                widget.storage.getServerUrl(),
+                              );
+                              if (!context.mounted) return;
+                              await Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => StaffActivationScreen(
+                                    api: widget.api,
+                                    email: _emailController.text.trim(),
+                                  ),
+                                ),
+                              );
+                            } catch (_) {
+                              if (mounted) {
+                                setState(
+                                  () => _errorMessage = 'Check the work server address before account setup.',
+                                );
+                              }
+                            }
+                          },
+                    icon: const Icon(Icons.mark_email_read_outlined),
+                    label: const Text('Activate an invited work account'),
+                  ),
                   // Industrial Header Badge
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.primary.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(6),
@@ -183,7 +222,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       children: [
                         if (_errorMessage != null) ...[
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
                             decoration: BoxDecoration(
                               color: AppColors.errorSurface,
                               borderRadius: BorderRadius.circular(8),
@@ -216,6 +258,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         const SizedBox(height: 6),
                         TextField(
                           controller: _emailController,
+                          enabled: !_isLoading,
+                          maxLength: 255,
                           keyboardType: TextInputType.emailAddress,
                           style: const TextStyle(
                             fontFamily: 'Plus Jakarta Sans',
@@ -225,18 +269,28 @@ class _LoginScreenState extends State<LoginScreen> {
                           decoration: InputDecoration(
                             filled: true,
                             fillColor: AppColors.surfaceElevated,
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 12,
+                            ),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
-                              borderSide: const BorderSide(color: AppColors.border),
+                              borderSide: const BorderSide(
+                                color: AppColors.border,
+                              ),
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
-                              borderSide: const BorderSide(color: AppColors.border),
+                              borderSide: const BorderSide(
+                                color: AppColors.border,
+                              ),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
-                              borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                              borderSide: const BorderSide(
+                                color: AppColors.primary,
+                                width: 1.5,
+                              ),
                             ),
                           ),
                         ),
@@ -256,6 +310,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         const SizedBox(height: 6),
                         TextField(
                           controller: _passwordController,
+                          enabled: !_isLoading,
+                          maxLength: 128,
                           obscureText: true,
                           style: const TextStyle(
                             fontFamily: 'Plus Jakarta Sans',
@@ -265,18 +321,28 @@ class _LoginScreenState extends State<LoginScreen> {
                           decoration: InputDecoration(
                             filled: true,
                             fillColor: AppColors.surfaceElevated,
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 12,
+                            ),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
-                              borderSide: const BorderSide(color: AppColors.border),
+                              borderSide: const BorderSide(
+                                color: AppColors.border,
+                              ),
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
-                              borderSide: const BorderSide(color: AppColors.border),
+                              borderSide: const BorderSide(
+                                color: AppColors.border,
+                              ),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
-                              borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                              borderSide: const BorderSide(
+                                color: AppColors.primary,
+                                width: 1.5,
+                              ),
                             ),
                           ),
                         ),
@@ -284,20 +350,26 @@ class _LoginScreenState extends State<LoginScreen> {
 
                         // Server URL Config Toggle
                         InkWell(
-                          onTap: () => setState(() => _showServerConfig = !_showServerConfig),
+                          onTap: () => setState(
+                            () => _showServerConfig = !_showServerConfig,
+                          ),
                           borderRadius: BorderRadius.circular(6),
                           child: Padding(
                             padding: const EdgeInsets.symmetric(vertical: 4),
                             child: Row(
                               children: [
                                 Icon(
-                                  _showServerConfig ? Icons.expand_less : Icons.expand_more,
+                                  _showServerConfig
+                                      ? Icons.expand_less
+                                      : Icons.expand_more,
                                   size: 18,
                                   color: AppColors.textSecondary,
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
-                                  _showServerConfig ? 'Hide Server Configuration' : 'Server Host URL Options',
+                                  _showServerConfig
+                                      ? 'Hide Server Configuration'
+                                      : 'Server Host URL Options',
                                   style: const TextStyle(
                                     fontFamily: 'Plus Jakarta Sans',
                                     fontSize: 12,
@@ -314,6 +386,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           const SizedBox(height: 10),
                           TextField(
                             controller: _serverController,
+                            enabled: !_isLoading,
+                            maxLength: 2048,
                             style: const TextStyle(
                               fontFamily: 'Plus Jakarta Sans',
                               fontSize: 13,
@@ -327,13 +401,20 @@ class _LoginScreenState extends State<LoginScreen> {
                                 color: AppColors.textMuted,
                               ),
                               hintText: 'http://10.0.2.2:8000',
-                              hintStyle: const TextStyle(color: AppColors.textMuted),
+                              hintStyle: const TextStyle(
+                                color: AppColors.textMuted,
+                              ),
                               filled: true,
                               fillColor: AppColors.surfaceElevated,
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 10,
+                              ),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(8),
-                                borderSide: const BorderSide(color: AppColors.border),
+                                borderSide: const BorderSide(
+                                  color: AppColors.border,
+                                ),
                               ),
                             ),
                           ),
@@ -342,7 +423,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
                         // Sign In Button
                         ElevatedButton(
-                          onPressed: _isLoading ? null : () => _handleLogin(demo: false),
+                          onPressed: _isLoading
+                              ? null
+                              : () => _handleLogin(demo: false),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,
                             foregroundColor: Colors.white,
@@ -374,10 +457,14 @@ class _LoginScreenState extends State<LoginScreen> {
 
                         // Demo / Fast Test Button
                         OutlinedButton(
-                          onPressed: _isLoading ? null : () => _handleLogin(demo: true),
+                          onPressed: _isLoading
+                              ? null
+                              : () => _handleLogin(demo: true),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppColors.textPrimary,
-                            side: const BorderSide(color: AppColors.borderLight),
+                            side: const BorderSide(
+                              color: AppColors.borderLight,
+                            ),
                             padding: const EdgeInsets.symmetric(vertical: 13),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),

@@ -1,22 +1,21 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+
 import '../models/scan_result.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
 import '../theme/app_colors.dart';
 import 'login_screen.dart';
+import 'hub_selection_screen.dart';
 
 class ScannerScreen extends StatefulWidget {
   final StorageService storage;
   final ApiService api;
 
-  const ScannerScreen({
-    super.key,
-    required this.storage,
-    required this.api,
-  });
+  const ScannerScreen({super.key, required this.storage, required this.api});
 
   @override
   State<ScannerScreen> createState() => _ScannerScreenState();
@@ -78,6 +77,11 @@ class _ScannerScreenState extends State<ScannerScreen> {
         mode: _continuousScan ? 'confirm' : 'inspect',
       );
 
+      if (!mounted) return;
+      if (!widget.storage.isLoggedIn) {
+        await _handleLogout();
+        return;
+      }
       setState(() {
         _lastResult = result;
         _scansCount++;
@@ -90,6 +94,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
         HapticFeedback.lightImpact();
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _lastResult = ScanResult.error(code, e.toString());
         _isProcessing = false;
@@ -143,6 +148,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
             const SizedBox(height: 12),
             TextField(
               controller: _manualInputController,
+              maxLength: 255,
               autofocus: true,
               style: const TextStyle(
                 fontFamily: 'Plus Jakarta Sans',
@@ -154,7 +160,10 @@ class _ScannerScreenState extends State<ScannerScreen> {
                 hintStyle: const TextStyle(color: AppColors.textMuted),
                 filled: true,
                 fillColor: AppColors.surfaceElevated,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: const BorderSide(color: AppColors.border),
@@ -177,7 +186,10 @@ class _ScannerScreenState extends State<ScannerScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel', style: TextStyle(color: AppColors.textMuted)),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: AppColors.textMuted),
+            ),
           ),
           ElevatedButton(
             onPressed: () {
@@ -190,7 +202,9 @@ class _ScannerScreenState extends State<ScannerScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(6),
+              ),
             ),
             child: const Text('Scan Code'),
           ),
@@ -225,15 +239,12 @@ class _ScannerScreenState extends State<ScannerScreen> {
     );
   }
 
-  void _handleLogout() async {
-    await widget.storage.clearAuth();
+  Future<void> _handleLogout() async {
+    await widget.api.logout();
     if (mounted) {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (_) => LoginScreen(
-            storage: widget.storage,
-            api: widget.api,
-          ),
+          builder: (_) => LoginScreen(storage: widget.storage, api: widget.api),
         ),
       );
     }
@@ -266,7 +277,10 @@ class _ScannerScreenState extends State<ScannerScreen> {
                 ),
                 const SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: widget.storage.isDemoMode()
                         ? AppColors.warningSurface
@@ -303,11 +317,38 @@ class _ScannerScreenState extends State<ScannerScreen> {
           ],
         ),
         actions: [
+          if (!widget.storage.isDemoMode())
+            IconButton(
+              tooltip: 'Refresh assigned hubs',
+              icon: const Icon(Icons.warehouse_outlined),
+              onPressed: _isProcessing
+                  ? null
+                  : () async {
+                      await _scannerController.stop();
+                      final valid = await widget.api.restoreSession();
+                      if (!mounted) return;
+                      if (!valid) {
+                        await _handleLogout();
+                        return;
+                      }
+                      if (!context.mounted) return;
+                      Navigator.of(context).pushReplacement(
+                        MaterialPageRoute<void>(
+                          builder: (_) => HubSelectionScreen(
+                            storage: widget.storage,
+                            api: widget.api,
+                          ),
+                        ),
+                      );
+                    },
+            ),
           IconButton(
             tooltip: 'Toggle Flashlight',
             icon: Icon(
               _torchEnabled ? Icons.flash_on : Icons.flash_off,
-              color: _torchEnabled ? AppColors.warning : AppColors.textSecondary,
+              color: _torchEnabled
+                  ? AppColors.warning
+                  : AppColors.textSecondary,
               size: 20,
             ),
             onPressed: () {
@@ -319,12 +360,20 @@ class _ScannerScreenState extends State<ScannerScreen> {
           ),
           IconButton(
             tooltip: 'Type Barcode Manually',
-            icon: const Icon(Icons.keyboard, color: AppColors.textSecondary, size: 20),
+            icon: const Icon(
+              Icons.keyboard,
+              color: AppColors.textSecondary,
+              size: 20,
+            ),
             onPressed: _showManualEntryDialog,
           ),
           IconButton(
             tooltip: 'Sign Out',
-            icon: const Icon(Icons.logout, color: AppColors.textMuted, size: 20),
+            icon: const Icon(
+              Icons.logout,
+              color: AppColors.textMuted,
+              size: 20,
+            ),
             onPressed: _handleLogout,
           ),
         ],
@@ -389,8 +438,8 @@ class _ScannerScreenState extends State<ScannerScreen> {
                       color: _isProcessing
                           ? AppColors.warning
                           : (_lastResult?.isError == true
-                              ? AppColors.error
-                              : AppColors.primary),
+                                ? AppColors.error
+                                : AppColors.primary),
                       width: 2.5,
                     ),
                     borderRadius: BorderRadius.circular(12),
@@ -413,7 +462,10 @@ class _ScannerScreenState extends State<ScannerScreen> {
                 Positioned(
                   bottom: 12,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: 0.7),
                       borderRadius: BorderRadius.circular(20),
@@ -443,7 +495,9 @@ class _ScannerScreenState extends State<ScannerScreen> {
               width: double.infinity,
               decoration: const BoxDecoration(
                 color: AppColors.surface,
-                border: Border(top: BorderSide(color: AppColors.border, width: 2)),
+                border: Border(
+                  top: BorderSide(color: AppColors.border, width: 2),
+                ),
               ),
               child: result == null
                   ? _buildAwaitingScanState()
@@ -504,7 +558,10 @@ class _ScannerScreenState extends State<ScannerScreen> {
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.textPrimary,
                 side: const BorderSide(color: AppColors.borderLight),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
               ),
             ),
           ],
@@ -541,7 +598,9 @@ class _ScannerScreenState extends State<ScannerScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      isErr ? 'ROUTING VIOLATION' : 'WHAT\'S NEXT (SORT TARGET)',
+                      isErr
+                          ? 'ROUTING VIOLATION'
+                          : 'WHAT\'S NEXT (SORT TARGET)',
                       style: TextStyle(
                         fontFamily: 'Plus Jakarta Sans',
                         fontSize: 11,
@@ -551,13 +610,16 @@ class _ScannerScreenState extends State<ScannerScreen> {
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
                       decoration: BoxDecoration(
                         color: isErr ? AppColors.error : AppColors.success,
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
-                        isErr ? 'REJECT' : (r.action ?? 'SORT'),
+                        isErr ? 'REJECT' : (r.action ?? 'INSPECTED'),
                         style: const TextStyle(
                           fontFamily: 'Plus Jakarta Sans',
                           fontSize: 10,
@@ -578,7 +640,9 @@ class _ScannerScreenState extends State<ScannerScreen> {
                     fontSize: 28,
                     fontWeight: FontWeight.w900,
                     letterSpacing: -0.5,
-                    color: isErr ? const Color(0xFFFCA5A5) : AppColors.textPrimary,
+                    color: isErr
+                        ? const Color(0xFFFCA5A5)
+                        : AppColors.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -601,7 +665,9 @@ class _ScannerScreenState extends State<ScannerScreen> {
                     fontFamily: 'Plus Jakarta Sans',
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: isErr ? const Color(0xFFFECDD3) : AppColors.textPrimary,
+                    color: isErr
+                        ? const Color(0xFFFECDD3)
+                        : AppColors.textPrimary,
                   ),
                 ),
               ],
@@ -659,9 +725,12 @@ class _ScannerScreenState extends State<ScannerScreen> {
                   ClipRRect(
                     borderRadius: BorderRadius.circular(4),
                     child: LinearProgressIndicator(
-                      value: ((r.bagParcelCount ?? 0) / (r.bagMaxParcels ?? 50)).clamp(0.0, 1.0),
+                      value: ((r.bagParcelCount ?? 0) / (r.bagMaxParcels ?? 50))
+                          .clamp(0.0, 1.0),
                       backgroundColor: AppColors.border,
-                      valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+                      valueColor: const AlwaysStoppedAnimation<Color>(
+                        AppColors.primary,
+                      ),
                       minHeight: 6,
                     ),
                   ),
@@ -789,7 +858,10 @@ class _ScannerScreenState extends State<ScannerScreen> {
             children: [
               Expanded(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.surfaceElevated,
                     borderRadius: BorderRadius.circular(8),
@@ -797,7 +869,11 @@ class _ScannerScreenState extends State<ScannerScreen> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.qr_code, size: 14, color: AppColors.textMuted),
+                      const Icon(
+                        Icons.qr_code,
+                        size: 14,
+                        color: AppColors.textMuted,
+                      ),
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
@@ -823,8 +899,13 @@ class _ScannerScreenState extends State<ScannerScreen> {
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.textSecondary,
                   side: const BorderSide(color: AppColors.border),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
                 child: const Text(
                   'Next Scan',

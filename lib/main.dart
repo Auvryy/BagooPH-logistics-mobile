@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'screens/login_screen.dart';
-import 'screens/scanner_screen.dart';
+
+import 'screens/session_gate.dart';
 import 'services/api_service.dart';
 import 'services/storage_service.dart';
 import 'theme/app_colors.dart';
@@ -28,11 +28,7 @@ class BagooScannerApp extends StatelessWidget {
   final StorageService storage;
   final ApiService api;
 
-  const BagooScannerApp({
-    super.key,
-    required this.storage,
-    required this.api,
-  });
+  const BagooScannerApp({super.key, required this.storage, required this.api});
 
   @override
   Widget build(BuildContext context) {
@@ -55,9 +51,7 @@ class BagooScannerApp extends StatelessWidget {
           elevation: 0,
         ),
       ),
-      home: storage.isLoggedIn
-          ? ScannerScreen(storage: storage, api: api)
-          : LoginScreen(storage: storage, api: api),
+      home: SessionGate(storage: storage, api: api),
     );
   }
 }
