@@ -3,8 +3,9 @@ import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
 import '../theme/app_colors.dart';
+import '../widgets/bagoo_logistics_logo.dart';
+import 'hub_workspace_screen.dart';
 import 'login_screen.dart';
-import 'scanner_screen.dart';
 
 class HubSelectionScreen extends StatefulWidget {
   final StorageService storage;
@@ -32,7 +33,7 @@ class _HubSelectionScreenState extends State<HubSelectionScreen> {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute<void>(
           builder: (_) =>
-              ScannerScreen(storage: widget.storage, api: widget.api),
+              HubWorkspaceScreen(storage: widget.storage, api: widget.api),
         ),
       );
     } catch (_) {
@@ -48,7 +49,19 @@ class _HubSelectionScreenState extends State<HubSelectionScreen> {
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
-      title: const Text('Choose your assigned hub'),
+      title: const Row(
+        children: [
+          BagooLogisticsMark(size: 28, borderRadius: 7),
+          SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Choose your assigned hub',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
       automaticallyImplyLeading: false,
     ),
     body: Center(
@@ -78,15 +91,24 @@ class _HubSelectionScreenState extends State<HubSelectionScreen> {
                     foregroundColor: AppColors.primary,
                     side: const BorderSide(color: AppColors.primary),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        hub['name'] as String,
-                        style: const TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                      Text(hub['code'] as String),
-                    ],
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          hub['name'] as String,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        Text(
+                          hub['code'] as String,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),

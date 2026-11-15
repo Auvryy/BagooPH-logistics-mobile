@@ -8,6 +8,8 @@ import '../models/scan_result.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
 import '../theme/app_colors.dart';
+import '../widgets/bagoo_logistics_logo.dart';
+import 'bag_packing_screen.dart';
 import 'login_screen.dart';
 import 'hub_selection_screen.dart';
 
@@ -261,57 +263,71 @@ class _ScannerScreenState extends State<ScannerScreen> {
         elevation: 0,
         titleSpacing: 16,
         shape: const Border(bottom: BorderSide(color: AppColors.border)),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        title: Row(
           children: [
-            Row(
-              children: [
-                Text(
-                  widget.storage.getHubName(),
-                  style: const TextStyle(
-                    fontFamily: 'Plus Jakarta Sans',
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary,
+            const BagooLogisticsMark(size: 28, borderRadius: 7),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          widget.storage.getHubName(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontFamily: 'Plus Jakarta Sans',
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: widget.storage.isDemoMode()
+                              ? AppColors.warningSurface
+                              : AppColors.successSurface,
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(
+                            color: widget.storage.isDemoMode()
+                                ? AppColors.warning
+                                : AppColors.success,
+                          ),
+                        ),
+                        child: Text(
+                          widget.storage.isDemoMode() ? 'DEMO' : 'LIVE',
+                          style: TextStyle(
+                            fontFamily: 'Plus Jakarta Sans',
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                            color: widget.storage.isDemoMode()
+                                ? AppColors.warning
+                                : AppColors.success,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: widget.storage.isDemoMode()
-                        ? AppColors.warningSurface
-                        : AppColors.successSurface,
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(
-                      color: widget.storage.isDemoMode()
-                          ? AppColors.warning
-                          : AppColors.success,
-                    ),
-                  ),
-                  child: Text(
-                    widget.storage.isDemoMode() ? 'DEMO' : 'LIVE',
-                    style: TextStyle(
+                  Text(
+                    '${widget.api.jobRoleLabel} · Session: $_scansCount',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
                       fontFamily: 'Plus Jakarta Sans',
-                      fontSize: 9,
-                      fontWeight: FontWeight.w800,
-                      color: widget.storage.isDemoMode()
-                          ? AppColors.warning
-                          : AppColors.success,
+                      fontSize: 10,
+                      color: AppColors.textMuted,
                     ),
                   ),
-                ),
-              ],
-            ),
-            Text(
-              'Session: $_scansCount parcels scanned',
-              style: const TextStyle(
-                fontFamily: 'Plus Jakarta Sans',
-                fontSize: 11,
-                color: AppColors.textMuted,
+                ],
               ),
             ),
           ],
@@ -390,20 +406,30 @@ class _ScannerScreenState extends State<ScannerScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    const Icon(Icons.speed, size: 16, color: AppColors.primary),
-                    const SizedBox(width: 6),
-                    const Text(
-                      'Continuous Auto-Intake',
-                      style: TextStyle(
-                        fontFamily: 'Plus Jakarta Sans',
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
+                Expanded(
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.speed,
+                        size: 16,
+                        color: AppColors.primary,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 6),
+                      const Flexible(
+                        child: Text(
+                          'Continuous Auto-Intake',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontFamily: 'Plus Jakarta Sans',
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 Switch.adaptive(
                   value: _continuousScan,
@@ -595,20 +621,24 @@ class _ScannerScreenState extends State<ScannerScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      isErr
-                          ? 'ROUTING VIOLATION'
-                          : 'WHAT\'S NEXT (SORT TARGET)',
-                      style: TextStyle(
-                        fontFamily: 'Plus Jakarta Sans',
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 1.2,
-                        color: isErr ? AppColors.error : AppColors.primary,
+                    Expanded(
+                      child: Text(
+                        isErr
+                            ? 'ROUTING VIOLATION'
+                            : 'WHAT\'S NEXT (SORT TARGET)',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontFamily: 'Plus Jakarta Sans',
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.2,
+                          color: isErr ? AppColors.error : AppColors.primary,
+                        ),
                       ),
                     ),
+                    const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 8,
@@ -688,25 +718,34 @@ class _ScannerScreenState extends State<ScannerScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'ALLOCATED MOTHER BAG',
-                        style: TextStyle(
-                          fontFamily: 'Plus Jakarta Sans',
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1.0,
-                          color: AppColors.textMuted,
+                      const Expanded(
+                        child: Text(
+                          'ALLOCATED MOTHER BAG',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontFamily: 'Plus Jakarta Sans',
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.0,
+                            color: AppColors.textMuted,
+                          ),
                         ),
                       ),
-                      Text(
-                        '${r.bagParcelCount ?? 0} / ${r.bagMaxParcels ?? 50} Parcels',
-                        style: const TextStyle(
-                          fontFamily: 'Plus Jakarta Sans',
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          '${r.bagParcelCount ?? 0} / ${r.bagMaxParcels ?? 50} Parcels',
+                          textAlign: TextAlign.end,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontFamily: 'Plus Jakarta Sans',
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                          ),
                         ),
                       ),
                     ],
@@ -743,6 +782,30 @@ class _ScannerScreenState extends State<ScannerScreen> {
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
                         color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                  if (!r.isError && r.isMasterBag && r.bagId != null) ...[
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => BagPackingScreen(
+                                storage: widget.storage,
+                                api: widget.api,
+                                bagId: r.bagId!,
+                              ),
+                            ),
+                          );
+                        },
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                        ),
+                        icon: const Icon(Icons.verified_outlined, size: 16),
+                        label: const Text('VERIFY SEAL & OPEN BAG'),
                       ),
                     ),
                   ],
