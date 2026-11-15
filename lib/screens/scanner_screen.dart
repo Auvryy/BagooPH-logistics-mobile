@@ -267,13 +267,17 @@ class _ScannerScreenState extends State<ScannerScreen> {
           children: [
             Row(
               children: [
-                Text(
-                  widget.storage.getHubName(),
-                  style: const TextStyle(
-                    fontFamily: 'Plus Jakarta Sans',
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary,
+                Flexible(
+                  child: Text(
+                    widget.storage.getHubName(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontFamily: 'Plus Jakarta Sans',
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -309,6 +313,8 @@ class _ScannerScreenState extends State<ScannerScreen> {
             ),
             Text(
               '${widget.api.jobRoleLabel} · Session: $_scansCount',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 fontFamily: 'Plus Jakarta Sans',
                 fontSize: 10,
@@ -391,20 +397,30 @@ class _ScannerScreenState extends State<ScannerScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    const Icon(Icons.speed, size: 16, color: AppColors.primary),
-                    const SizedBox(width: 6),
-                    const Text(
-                      'Continuous Auto-Intake',
-                      style: TextStyle(
-                        fontFamily: 'Plus Jakarta Sans',
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
+                Expanded(
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.speed,
+                        size: 16,
+                        color: AppColors.primary,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 6),
+                      const Flexible(
+                        child: Text(
+                          'Continuous Auto-Intake',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontFamily: 'Plus Jakarta Sans',
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 Switch.adaptive(
                   value: _continuousScan,
@@ -596,20 +612,24 @@ class _ScannerScreenState extends State<ScannerScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      isErr
-                          ? 'ROUTING VIOLATION'
-                          : 'WHAT\'S NEXT (SORT TARGET)',
-                      style: TextStyle(
-                        fontFamily: 'Plus Jakarta Sans',
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 1.2,
-                        color: isErr ? AppColors.error : AppColors.primary,
+                    Expanded(
+                      child: Text(
+                        isErr
+                            ? 'ROUTING VIOLATION'
+                            : 'WHAT\'S NEXT (SORT TARGET)',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontFamily: 'Plus Jakarta Sans',
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.2,
+                          color: isErr ? AppColors.error : AppColors.primary,
+                        ),
                       ),
                     ),
+                    const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 8,
@@ -689,25 +709,34 @@ class _ScannerScreenState extends State<ScannerScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'ALLOCATED MOTHER BAG',
-                        style: TextStyle(
-                          fontFamily: 'Plus Jakarta Sans',
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1.0,
-                          color: AppColors.textMuted,
+                      const Expanded(
+                        child: Text(
+                          'ALLOCATED MOTHER BAG',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontFamily: 'Plus Jakarta Sans',
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.0,
+                            color: AppColors.textMuted,
+                          ),
                         ),
                       ),
-                      Text(
-                        '${r.bagParcelCount ?? 0} / ${r.bagMaxParcels ?? 50} Parcels',
-                        style: const TextStyle(
-                          fontFamily: 'Plus Jakarta Sans',
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          '${r.bagParcelCount ?? 0} / ${r.bagMaxParcels ?? 50} Parcels',
+                          textAlign: TextAlign.end,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontFamily: 'Plus Jakarta Sans',
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                          ),
                         ),
                       ),
                     ],

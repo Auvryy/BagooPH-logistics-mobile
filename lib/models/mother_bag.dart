@@ -224,7 +224,10 @@ class BagWorkspaceData {
     Map<String, dynamic> mapOf(dynamic value) =>
         value is Map ? Map<String, dynamic>.from(value) : <String, dynamic>{};
     List<Map<String, dynamic>> listOf(dynamic value) => value is List
-        ? value.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList()
+        ? value
+              .whereType<Map>()
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList()
         : const [];
 
     final hub = mapOf(json['hub']);
@@ -234,7 +237,9 @@ class BagWorkspaceData {
       canPackDispatch: hub['can_pack_dispatch'] != false,
       bags: listOf(json['bags']).map(MotherBagRecord.fromJson).toList(),
       nextHubs: listOf(json['next_hubs']).map(NextHubOption.fromJson).toList(),
-      manifests: listOf(json['manifests']).map(ManifestOption.fromJson).toList(),
+      manifests: listOf(json['manifests'])
+          .map(ManifestOption.fromJson)
+          .toList(),
       presets: listOf(json['presets']).map(BagPreset.fromJson).toList(),
     );
   }

@@ -78,15 +78,24 @@ class _HubSelectionScreenState extends State<HubSelectionScreen> {
                     foregroundColor: AppColors.primary,
                     side: const BorderSide(color: AppColors.primary),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        hub['name'] as String,
-                        style: const TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                      Text(hub['code'] as String),
-                    ],
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          hub['name'] as String,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        Text(
+                          hub['code'] as String,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),

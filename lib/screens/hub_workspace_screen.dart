@@ -69,10 +69,17 @@ class _HubWorkspaceScreenState extends State<HubWorkspaceScreen> {
             children: [
               Text(
                 hubName,
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
               Text(
                 'LOCKED: ${widget.api.jobRoleLabel}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
@@ -107,6 +114,8 @@ class _HubWorkspaceScreenState extends State<HubWorkspaceScreen> {
                 children: [
                   Text(
                     '$hubName · Mother Bags',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w800,
@@ -114,6 +123,8 @@ class _HubWorkspaceScreenState extends State<HubWorkspaceScreen> {
                   ),
                   Text(
                     'ROLE: ${role.toUpperCase()}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w700,

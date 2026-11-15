@@ -129,7 +129,10 @@ class _MotherBagsScreenState extends State<MotherBagsScreen> {
               ),
               child: Text(
                 _error!,
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
 
@@ -161,15 +164,29 @@ class _MotherBagsScreenState extends State<MotherBagsScreen> {
                   const SizedBox(height: 12),
                   DropdownButtonFormField<int>(
                     initialValue: _nextHubId,
+                    isExpanded: true,
                     decoration: const InputDecoration(
                       labelText: 'Next Hub',
                       isDense: true,
                     ),
+                    selectedItemBuilder: (context) => workspace.nextHubs
+                        .map(
+                          (hub) => Text(
+                            '${hub.name} (${hub.code})',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        )
+                        .toList(),
                     items: workspace.nextHubs
                         .map(
                           (hub) => DropdownMenuItem<int>(
                             value: hub.id,
-                            child: Text('${hub.name} (${hub.code})'),
+                            child: Text(
+                              '${hub.name} (${hub.code})',
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                         )
                         .toList(),
@@ -178,16 +195,41 @@ class _MotherBagsScreenState extends State<MotherBagsScreen> {
                   const SizedBox(height: 10),
                   DropdownButtonFormField<String>(
                     initialValue: _preset,
+                    isExpanded: true,
                     decoration: const InputDecoration(
                       labelText: 'Capacity Preset',
                       isDense: true,
                     ),
+                    selectedItemBuilder: (context) => [
+                      for (final p in workspace.presets)
+                        Text(
+                          p.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      const Text(
+                        'Custom limits',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
                     items: [
                       for (final p in workspace.presets)
-                        DropdownMenuItem(value: p.key, child: Text(p.label)),
+                        DropdownMenuItem(
+                          value: p.key,
+                          child: Text(
+                            p.label,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
                       const DropdownMenuItem(
                         value: 'custom',
-                        child: Text('Custom limits'),
+                        child: Text(
+                          'Custom limits',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ],
                     onChanged: (value) {
@@ -199,8 +241,12 @@ class _MotherBagsScreenState extends State<MotherBagsScreen> {
                             .firstOrNull;
                         if (match != null) {
                           _maxCount.text = '${match.maxCount}';
-                          _maxWeight.text = match.maxWeightKg.toStringAsFixed(0);
-                          _maxVolume.text = match.maxVolumeM3.toStringAsFixed(2);
+                          _maxWeight.text = match.maxWeightKg.toStringAsFixed(
+                            0,
+                          );
+                          _maxVolume.text = match.maxVolumeM3.toStringAsFixed(
+                            2,
+                          );
                         }
                       });
                     },
@@ -259,7 +305,9 @@ class _MotherBagsScreenState extends State<MotherBagsScreen> {
                     ),
                     icon: const Icon(Icons.add_box_outlined),
                     label: Text(
-                      _creating ? 'Opening bag...' : 'Create Bag & Start Camera Scan',
+                      _creating
+                          ? 'Opening bag...'
+                          : 'Create Bag & Start Camera Scan',
                     ),
                   ),
                 ],
@@ -291,7 +339,10 @@ class _MotherBagsScreenState extends State<MotherBagsScreen> {
               child: Center(
                 child: Text(
                   'No Mother Bags queued for this hub yet.',
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                  ),
                 ),
               ),
             )
@@ -307,6 +358,8 @@ class _MotherBagsScreenState extends State<MotherBagsScreen> {
                 child: ListTile(
                   title: Text(
                     bag.reference,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontWeight: FontWeight.w800,
                       fontSize: 14,
@@ -314,6 +367,8 @@ class _MotherBagsScreenState extends State<MotherBagsScreen> {
                   ),
                   subtitle: Text(
                     '${bag.source?.code ?? ''} -> ${bag.destination?.code ?? ''} · ${bag.parcelsCount} parcels${bag.sealNumber != null ? " · Seal ${bag.sealNumber}" : ""}',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontSize: 12),
                   ),
                   trailing: Container(

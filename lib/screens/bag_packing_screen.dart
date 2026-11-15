@@ -88,7 +88,9 @@ class _BagPackingScreenState extends State<BagPackingScreen> {
       List<ManifestOption> manifests = _manifests;
       if (manifests.isEmpty && bag.sourceHubId > 0) {
         try {
-          final workspace = await widget.api.fetchMotherBags(hubId: bag.sourceHubId);
+          final workspace = await widget.api.fetchMotherBags(
+            hubId: bag.sourceHubId,
+          );
           manifests = workspace.manifests;
         } catch (_) {}
       }
@@ -217,7 +219,9 @@ class _BagPackingScreenState extends State<BagPackingScreen> {
             const SizedBox(height: 12),
             TextField(
               controller: weight,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               decoration: const InputDecoration(labelText: 'Weight (kg)'),
             ),
             Row(
@@ -225,7 +229,9 @@ class _BagPackingScreenState extends State<BagPackingScreen> {
                 Expanded(
                   child: TextField(
                     controller: length,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     decoration: const InputDecoration(labelText: 'L (cm)'),
                   ),
                 ),
@@ -233,7 +239,9 @@ class _BagPackingScreenState extends State<BagPackingScreen> {
                 Expanded(
                   child: TextField(
                     controller: width,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     decoration: const InputDecoration(labelText: 'W (cm)'),
                   ),
                 ),
@@ -241,7 +249,9 @@ class _BagPackingScreenState extends State<BagPackingScreen> {
                 Expanded(
                   child: TextField(
                     controller: height,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     decoration: const InputDecoration(labelText: 'H (cm)'),
                   ),
                 ),
@@ -502,10 +512,14 @@ class _BagPackingScreenState extends State<BagPackingScreen> {
           children: [
             Text(
               bag.reference,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
             ),
             Text(
               '${bag.source?.code ?? ''} -> ${bag.destination?.code ?? ''} · ${bag.status.toUpperCase()}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 fontSize: 11,
                 color: AppColors.textSecondary,
@@ -572,20 +586,29 @@ class _BagPackingScreenState extends State<BagPackingScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        '${cap.count} / ${cap.maxCount} parcels',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 13,
+                      Expanded(
+                        child: Text(
+                          '${cap.count} / ${cap.maxCount} parcels',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13,
+                          ),
                         ),
                       ),
-                      Text(
-                        '${cap.weightKg?.toStringAsFixed(1) ?? "?"} / ${cap.maxWeightKg.toStringAsFixed(0)} kg · ${bag.capacityPreset.toUpperCase()}',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: AppColors.textSecondary,
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          '${cap.weightKg?.toStringAsFixed(1) ?? "?"} / ${cap.maxWeightKg.toStringAsFixed(0)} kg · ${bag.capacityPreset.toUpperCase()}',
+                          textAlign: TextAlign.end,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textSecondary,
+                          ),
                         ),
                       ),
                     ],
@@ -594,8 +617,9 @@ class _BagPackingScreenState extends State<BagPackingScreen> {
                   ClipRRect(
                     borderRadius: BorderRadius.circular(4),
                     child: LinearProgressIndicator(
-                      value: (cap.count / (cap.maxCount <= 0 ? 1 : cap.maxCount))
-                          .clamp(0.0, 1.0),
+                      value:
+                          (cap.count / (cap.maxCount <= 0 ? 1 : cap.maxCount))
+                              .clamp(0.0, 1.0),
                       minHeight: 6,
                       backgroundColor: AppColors.border,
                       valueColor: const AlwaysStoppedAnimation<Color>(
@@ -666,17 +690,22 @@ class _BagPackingScreenState extends State<BagPackingScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Continuous auto-pack',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
+                      const Expanded(
+                        child: Text(
+                          'Continuous auto-pack',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                       Switch(
                         value: _continuousAutoAdd,
                         activeThumbColor: AppColors.primary,
-                        onChanged: (v) => setState(() => _continuousAutoAdd = v),
+                        onChanged: (v) =>
+                            setState(() => _continuousAutoAdd = v),
                       ),
                     ],
                   ),
@@ -761,7 +790,9 @@ class _BagPackingScreenState extends State<BagPackingScreen> {
                   ),
                   const SizedBox(height: 10),
                   FilledButton.icon(
-                    onPressed: (_busy || activeParcels.isEmpty) ? null : _sealBag,
+                    onPressed: (_busy || activeParcels.isEmpty)
+                        ? null
+                        : _sealBag,
                     style: FilledButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       padding: const EdgeInsets.symmetric(vertical: 12),
@@ -798,16 +829,28 @@ class _BagPackingScreenState extends State<BagPackingScreen> {
                   if (matchingManifests.isNotEmpty) ...[
                     DropdownButtonFormField<int>(
                       initialValue: _selectedManifestId,
+                      isExpanded: true,
                       decoration: const InputDecoration(
                         labelText: 'Select Draft Manifest / Truck',
                         isDense: true,
                       ),
+                      selectedItemBuilder: (context) => matchingManifests
+                          .map(
+                            (m) => Text(
+                              '${m.reference}${m.vehiclePlate != null ? " (${m.vehiclePlate})" : ""}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          )
+                          .toList(),
                       items: matchingManifests
                           .map(
                             (m) => DropdownMenuItem<int>(
                               value: m.id,
                               child: Text(
                                 '${m.reference}${m.vehiclePlate != null ? " (${m.vehiclePlate})" : ""}',
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           )
@@ -816,8 +859,9 @@ class _BagPackingScreenState extends State<BagPackingScreen> {
                     ),
                     const SizedBox(height: 10),
                     FilledButton.icon(
-                      onPressed:
-                          (_busy || _selectedManifestId == null) ? null : _loadToManifest,
+                      onPressed: (_busy || _selectedManifestId == null)
+                          ? null
+                          : _loadToManifest,
                       icon: const Icon(Icons.local_shipping_outlined),
                       label: const Text('Load Bag onto Manifest'),
                     ),
@@ -949,6 +993,8 @@ class _BagPackingScreenState extends State<BagPackingScreen> {
                               children: [
                                 Text(
                                   item.trackingNumber,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
                                     fontWeight: FontWeight.w700,
                                     fontSize: 13,
@@ -956,6 +1002,8 @@ class _BagPackingScreenState extends State<BagPackingScreen> {
                                 ),
                                 Text(
                                   item.status.replaceAll('_', ' '),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
                                     fontSize: 11,
                                     color: AppColors.textSecondary,
@@ -966,7 +1014,9 @@ class _BagPackingScreenState extends State<BagPackingScreen> {
                           ),
                           if (bag.status == 'open' && bag.canPack)
                             TextButton.icon(
-                              onPressed: _busy ? null : () => _revertParcel(item),
+                              onPressed: _busy
+                                  ? null
+                                  : () => _revertParcel(item),
                               icon: const Icon(Icons.undo, size: 16),
                               label: const Text('Revert'),
                               style: TextButton.styleFrom(
