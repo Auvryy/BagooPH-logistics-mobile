@@ -11,7 +11,10 @@ class StorageService {
   static const String _keyDemoMode = 'bagoo_demo_mode';
   static const String _keyContinuousScan = 'bagoo_continuous_scan';
 
-  static const String defaultServerUrl = 'http://10.0.2.2:8000';
+  static const String defaultServerUrl = String.fromEnvironment(
+    'BAGOO_BASE_URL',
+    defaultValue: 'http://10.0.2.2:8000',
+  );
   final SharedPreferences _prefs;
   final FlutterSecureStorage _secure;
   String? _token;
