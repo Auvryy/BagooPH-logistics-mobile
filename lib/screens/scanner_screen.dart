@@ -8,6 +8,7 @@ import '../models/scan_result.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
 import '../theme/app_colors.dart';
+import 'bag_packing_screen.dart';
 import 'login_screen.dart';
 import 'hub_selection_screen.dart';
 
@@ -307,10 +308,10 @@ class _ScannerScreenState extends State<ScannerScreen> {
               ],
             ),
             Text(
-              'Session: $_scansCount parcels scanned',
+              '${widget.api.jobRoleLabel} · Session: $_scansCount',
               style: const TextStyle(
                 fontFamily: 'Plus Jakarta Sans',
-                fontSize: 11,
+                fontSize: 10,
                 color: AppColors.textMuted,
               ),
             ),
@@ -743,6 +744,30 @@ class _ScannerScreenState extends State<ScannerScreen> {
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
                         color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                  if (!r.isError && r.isMasterBag && r.bagId != null) ...[
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => BagPackingScreen(
+                                storage: widget.storage,
+                                api: widget.api,
+                                bagId: r.bagId!,
+                              ),
+                            ),
+                          );
+                        },
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                        ),
+                        icon: const Icon(Icons.verified_outlined, size: 16),
+                        label: const Text('VERIFY SEAL & OPEN BAG'),
                       ),
                     ),
                   ],

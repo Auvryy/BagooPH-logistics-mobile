@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
 import '../theme/app_colors.dart';
+import 'hub_workspace_screen.dart';
 import 'login_screen.dart';
-import 'scanner_screen.dart';
 
 class HubSelectionScreen extends StatefulWidget {
   final StorageService storage;
@@ -32,7 +32,7 @@ class _HubSelectionScreenState extends State<HubSelectionScreen> {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute<void>(
           builder: (_) =>
-              ScannerScreen(storage: widget.storage, api: widget.api),
+              HubWorkspaceScreen(storage: widget.storage, api: widget.api),
         ),
       );
     } catch (_) {

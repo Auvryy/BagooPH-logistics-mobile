@@ -1,0 +1,210 @@
+import 'package:bagoo_scanner_mobile/models/scan_result.dart';
+import 'package:bagoo_scanner_mobile/services/api_service.dart';
+import 'package:bagoo_scanner_mobile/services/storage_service.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'account_api_test.dart';
+
+void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  late StorageService storage;
+
+  setUp(() async {
+    SharedPreferences.setMockInitialValues({});
+    FlutterSecureStorage.setMockInitialValues({});
+    storage = await StorageService.init();
+  });
+
+  ApiService service(ReplyAdapter adapter) =>
+      ApiService(storage, dio: Dio()..httpClientAdapter = adapter);
+
+  test('worker exclusive role flags drive intake vs pack_dispatch access', () async {
+    final adapter = ReplyAdapter((request) {
+      if (request.path.endsWith('/tokens')) {
+        return jsonReply({
+          'data': {
+            'token': '22|role-session',
+            'user': {
+              'role': 'logistics',
+              'email': 'packer@bagoo.test',
+              'name': 'Packer Worker',
+            },
+            'hubs': [
+              {
+                'id': 11,
+                'name': 'Los Banos Bayan Hub',
+                'code': 'BH-LBN-01',
+                'tier': 'local_bayan_hub',
+                'job_role': 'pack_dispatch',
+                'can_intake': false,
+                'can_pack_dispatch': true,
+              },
+            ],
+          },
+        });
+      }
+      return jsonReply({'data': {}});
+    });
+
+    final api = service(adapter);
+    await api.login('packer@bagoo.test', 'Password1234');
+    expect(api.activeJobRole, 'pack_dispatch');
+    expect(api.canIntake, false);
+    expect(api.canPackDispatch, true);
+    expect(api.jobRoleLabel, 'PACK & DISPATCH ONLY');
+  });
+
+  test('mother bag API parses presets, creates bag, handles needs_measurements, and reverts/seals', () async {
+    final adapter = ReplyAdapter((request) {
+      if (request.path.endsWith('/tokens')) {
+        return jsonReply(account());
+      }
+      if (request.method == 'GET' && request.path == '/api/v1/logistics/mother-bags') {
+        return jsonReply({
+          'data': {
+            'hub': {
+              'id': 7,
+              'name': 'Assigned origin',
+              'code': 'TEST-ORIGIN',
+              'tier': 'local_bayan_hub',
+              'job_role': 'pack_dispatch',
+              'can_intake': false,
+              'can_pack_dispatch': true,
+            },
+            'bags': [],
+            'next_hubs': [
+              {'id': 8, 'name': 'Laguna Mother Hub', 'code': 'MH-LAG-01', 'tier': 'regional_mother_hub'},
+            ],
+            'manifests': [],
+            'presets': [
+              {
+                'key': 'standard',
+                'label': 'Standard Sack (50 parcels · 25 kg · 0.30 m³)',
+                'max_count': 50,
+                'max_weight_kg': 25,
+                'max_volume_cm3': 300000,
+              },
+            ],
+          },
+        });
+      }
+      if (request.method == 'POST' && request.path == '/api/v1/logistics/mother-bags') {
+        return jsonReply({
+          'message': 'Mother Bag created.',
+          'data': {
+            'id': 'bag-uuid-1',
+            'reference': 'BAG-001',
+            'status': 'open',
+            'version': 1,
+            'source_hub_id': 7,
+            'destination_hub_id': 8,
+            'parcels_count': 0,
+            'capacity_preset': 'custom',
+            'can_pack': true,
+            'can_open': false,
+            'parcels': [],
+          },
+        }, 201);
+      }
+      if (request.path == '/api/v1/logistics/mother-bags/bag-uuid-1/add' &&
+          request.data['handling'] == null) {
+        return jsonReply({
+          'message': 'Measure this outer package first.',
+          'needs_measurements': true,
+        }, 422);
+      }
+      return jsonReply({
+        'message': 'OK',
+        'data': {
+          'id': 'bag-uuid-1',
+          'reference': 'BAG-001',
+          'status': request.path.endsWith('/seal') ? 'sealed' : 'open',
+          'seal_number': request.path.endsWith('/seal') ? 'SL-9001' : null,
+          'version': 2,
+          'source_hub_id': 7,
+          'destination_hub_id': 8,
+          'parcels_count': request.path.endsWith('/remove') ? 0 : 1,
+          'capacity_preset': 'custom',
+          'can_pack': true,
+          'can_open': false,
+          'parcels': [],
+        },
+      });
+    });
+
+    final api = service(adapter);
+    await api.login('operator@bagoo.test', 'Password1234');
+
+    final workspace = await api.fetchMotherBags(hubId: 7);
+    expect(workspace.nextHubs.single.name, 'Laguna Mother Hub');
+    expect(workspace.presets.single.key, 'standard');
+
+    final created = await api.createMotherBag(
+      sourceHubId: 7,
+      destinationHubId: 8,
+      capacityPreset: 'custom',
+      maxCount: 75,
+      maxWeightKg: 40,
+      maxVolumeM3: 0.45,
+    );
+    expect(created.success, true);
+    expect(created.bag?.reference, 'BAG-001');
+
+    final needsMeasure = await api.motherBagCommand('bag-uuid-1', 'add', {
+      'version': 1,
+      'barcode': 'BGO-123',
+    });
+    expect(needsMeasure.success, false);
+    expect(needsMeasure.needsMeasurements, true);
+
+    final added = await api.motherBagCommand('bag-uuid-1', 'add', {
+      'version': 1,
+      'barcode': 'BGO-123',
+      'handling': {
+        'weight_kg': 1.5,
+        'length_cm': 20,
+        'width_cm': 15,
+        'height_cm': 10,
+        'confirmed': true,
+      },
+    });
+    expect(added.success, true);
+
+    final reverted = await api.motherBagCommand('bag-uuid-1', 'remove', {
+      'version': 2,
+      'barcode': 'BGO-123',
+      'notes': 'Mis-scanned parcel',
+    });
+    expect(reverted.success, true);
+    expect(reverted.bag?.parcelsCount, 0);
+
+    final sealed = await api.motherBagCommand('bag-uuid-1', 'seal', {
+      'version': 2,
+      'seal_number': 'SL-9001',
+    });
+    expect(sealed.success, true);
+    expect(sealed.bag?.status, 'sealed');
+    expect(sealed.bag?.sealNumber, 'SL-9001');
+  });
+
+  test('ScanResult extracts bagId and isMasterBag for arriving Mother Bags', () {
+    final result = ScanResult.fromJson({
+      'success': true,
+      'is_master_bag': true,
+      'message': 'Open Mother Bag verification.',
+      'prompt': {'requires_confirmation': false},
+      'bag': {
+        'id': 'bag-xyz-99',
+        'reference': 'BAG-INCOMING-99',
+        'seal_number': 'SL-55555',
+        'parcel_count': 12,
+      },
+    }, 'BAG-INCOMING-99');
+    expect(result.isMasterBag, true);
+    expect(result.bagId, 'bag-xyz-99');
+    expect(result.sealNumber, 'SL-55555');
+  });
+}

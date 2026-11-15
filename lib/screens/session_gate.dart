@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
 import 'hub_selection_screen.dart';
+import 'hub_workspace_screen.dart';
 import 'login_screen.dart';
-import 'scanner_screen.dart';
 
 class SessionGate extends StatefulWidget {
   final StorageService storage;
@@ -35,7 +35,7 @@ class _SessionGateState extends State<SessionGate> {
       if (!widget.storage.isDemoMode() && widget.storage.getHubId() == null) {
         return HubSelectionScreen(storage: widget.storage, api: widget.api);
       }
-      return ScannerScreen(storage: widget.storage, api: widget.api);
+      return HubWorkspaceScreen(storage: widget.storage, api: widget.api);
     },
   );
 }
