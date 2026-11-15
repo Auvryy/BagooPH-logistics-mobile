@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
 import '../theme/app_colors.dart';
+import '../widgets/bagoo_logistics_logo.dart';
 import 'hub_workspace_screen.dart';
 import 'login_screen.dart';
 
@@ -48,7 +49,19 @@ class _HubSelectionScreenState extends State<HubSelectionScreen> {
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
-      title: const Text('Choose your assigned hub'),
+      title: const Row(
+        children: [
+          BagooLogisticsMark(size: 28, borderRadius: 7),
+          SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Choose your assigned hub',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
       automaticallyImplyLeading: false,
     ),
     body: Center(

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
 import '../theme/app_colors.dart';
+import '../widgets/bagoo_logistics_logo.dart';
 import 'hub_workspace_screen.dart';
 import 'hub_selection_screen.dart';
 import 'staff_activation_screen.dart';
@@ -156,6 +157,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     icon: const Icon(Icons.mark_email_read_outlined),
                     label: const Text('Activate an invited work account'),
                   ),
+                  const BagooLogisticsBrandHeader(),
+                  const SizedBox(height: 14),
                   // Industrial Header Badge
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,

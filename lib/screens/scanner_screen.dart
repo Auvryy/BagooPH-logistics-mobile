@@ -8,6 +8,7 @@ import '../models/scan_result.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
 import '../theme/app_colors.dart';
+import '../widgets/bagoo_logistics_logo.dart';
 import 'bag_packing_screen.dart';
 import 'login_screen.dart';
 import 'hub_selection_screen.dart';
@@ -262,63 +263,71 @@ class _ScannerScreenState extends State<ScannerScreen> {
         elevation: 0,
         titleSpacing: 16,
         shape: const Border(bottom: BorderSide(color: AppColors.border)),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        title: Row(
           children: [
-            Row(
-              children: [
-                Flexible(
-                  child: Text(
-                    widget.storage.getHubName(),
+            const BagooLogisticsMark(size: 28, borderRadius: 7),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          widget.storage.getHubName(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontFamily: 'Plus Jakarta Sans',
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: widget.storage.isDemoMode()
+                              ? AppColors.warningSurface
+                              : AppColors.successSurface,
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(
+                            color: widget.storage.isDemoMode()
+                                ? AppColors.warning
+                                : AppColors.success,
+                          ),
+                        ),
+                        child: Text(
+                          widget.storage.isDemoMode() ? 'DEMO' : 'LIVE',
+                          style: TextStyle(
+                            fontFamily: 'Plus Jakarta Sans',
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                            color: widget.storage.isDemoMode()
+                                ? AppColors.warning
+                                : AppColors.success,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Text(
+                    '${widget.api.jobRoleLabel} · Session: $_scansCount',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontFamily: 'Plus Jakarta Sans',
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary,
+                      fontSize: 10,
+                      color: AppColors.textMuted,
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: widget.storage.isDemoMode()
-                        ? AppColors.warningSurface
-                        : AppColors.successSurface,
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(
-                      color: widget.storage.isDemoMode()
-                          ? AppColors.warning
-                          : AppColors.success,
-                    ),
-                  ),
-                  child: Text(
-                    widget.storage.isDemoMode() ? 'DEMO' : 'LIVE',
-                    style: TextStyle(
-                      fontFamily: 'Plus Jakarta Sans',
-                      fontSize: 9,
-                      fontWeight: FontWeight.w800,
-                      color: widget.storage.isDemoMode()
-                          ? AppColors.warning
-                          : AppColors.success,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            Text(
-              '${widget.api.jobRoleLabel} · Session: $_scansCount',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontFamily: 'Plus Jakarta Sans',
-                fontSize: 10,
-                color: AppColors.textMuted,
+                ],
               ),
             ),
           ],
