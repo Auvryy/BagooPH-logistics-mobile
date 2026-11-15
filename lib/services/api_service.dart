@@ -1,15 +1,61 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:dio/dio.dart';
 
+import '../models/mother_bag.dart';
 import '../models/scan_result.dart';
 import 'storage_service.dart';
 
 class ApiService {
   final StorageService storage;
   final Dio _dio;
+  final Random _random = Random();
   List<Map<String, dynamic>> _hubs = [];
   List<Map<String, dynamic>> get hubs => List.unmodifiable(_hubs);
+
+  Map<String, dynamic>? get activeHub {
+    final id = storage.getHubId();
+    if (id == null) return null;
+    return _hubs.where((hub) => hub['id'] == id).firstOrNull;
+  }
+
+  String get activeJobRole {
+    final role = activeHub?['job_role'];
+    if (role == 'intake' || role == 'pack_dispatch' || role == 'all') {
+      return role as String;
+    }
+    return 'all';
+  }
+
+  bool get canIntake {
+    if (storage.isDemoMode()) return true;
+    final flag = activeHub?['can_intake'];
+    if (flag is bool) return flag;
+    return activeJobRole != 'pack_dispatch';
+  }
+
+  bool get canPackDispatch {
+    if (storage.isDemoMode()) return true;
+    final flag = activeHub?['can_pack_dispatch'];
+    if (flag is bool) return flag;
+    return activeJobRole != 'intake';
+  }
+
+  String get jobRoleLabel => switch (activeJobRole) {
+    'intake' => 'ENTRY / INTAKE ONLY',
+    'pack_dispatch' => 'PACK & DISPATCH ONLY',
+    _ => 'FULL HUB OPERATIONS',
+  };
+
+  String newRequestToken() {
+    final bytes = List<int>.generate(16, (_) => _random.nextInt(256));
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    String hex(int b) => b.toRadixString(16).padLeft(2, '0');
+    final h = bytes.map(hex).join();
+    return '${h.substring(0, 8)}-${h.substring(8, 12)}-${h.substring(12, 16)}-${h.substring(16, 20)}-${h.substring(20, 32)}';
+  }
 
   ApiService(this.storage, {Dio? dio}) : _dio = dio ?? Dio() {
     _dio.options = BaseOptions(
@@ -264,6 +310,141 @@ class ApiService {
         _hubs = [];
       }
       return ScanResult.error(clean, _message(error));
+    }
+  }
+
+  Future<BagWorkspaceData> fetchMotherBags({int? hubId}) async {
+    if (storage.isDemoMode()) {
+      return const BagWorkspaceData(
+        jobRole: 'all',
+        canIntake: true,
+        canPackDispatch: true,
+        bags: [],
+        nextHubs: [],
+        manifests: [],
+        presets: [
+          BagPreset(
+            key: 'standard',
+            label: 'Standard Sack (50 parcels · 25 kg · 0.30 m³)',
+            maxCount: 50,
+            maxWeightKg: 25,
+            maxVolumeCm3: 300000,
+          ),
+        ],
+      );
+    }
+    final targetHub = hubId ?? storage.getHubId();
+    try {
+      final response = await _dio.get(
+        '/api/v1/logistics/mother-bags',
+        options: _authorized,
+        queryParameters: {'hub_id': ?targetHub},
+      );
+      final data = _object(_object(response.data)['data']);
+      return BagWorkspaceData.fromJson(data);
+    } catch (error) {
+      if (error is DioException && error.response?.statusCode == 401) {
+        await storage.clearAuth();
+        _hubs = [];
+      }
+      throw FormatException(_message(error));
+    }
+  }
+
+  Future<MotherBagRecord> fetchMotherBag(String id) async {
+    try {
+      final response = await _dio.get(
+        '/api/v1/logistics/mother-bags/$id',
+        options: _authorized,
+      );
+      return MotherBagRecord.fromJson(_object(_object(response.data)['data']));
+    } catch (error) {
+      if (error is DioException && error.response?.statusCode == 401) {
+        await storage.clearAuth();
+        _hubs = [];
+      }
+      throw FormatException(_message(error));
+    }
+  }
+
+  Future<BagCommandResult> createMotherBag({
+    required int sourceHubId,
+    required int destinationHubId,
+    required String capacityPreset,
+    String? creationToken,
+    int? maxCount,
+    double? maxWeightKg,
+    double? maxVolumeM3,
+  }) async {
+    try {
+      final response = await _dio.post(
+        '/api/v1/logistics/mother-bags',
+        options: _authorized,
+        data: {
+          'source_hub_id': sourceHubId,
+          'destination_hub_id': destinationHubId,
+          'creation_token': creationToken ?? newRequestToken(),
+          'capacity_preset': capacityPreset,
+          if (capacityPreset == 'custom' && maxCount != null)
+            'max_count': maxCount,
+          if (capacityPreset == 'custom' && maxWeightKg != null)
+            'max_weight_kg': maxWeightKg,
+          if (capacityPreset == 'custom' && maxVolumeM3 != null)
+            'max_volume_m3': maxVolumeM3,
+        },
+      );
+      final body = _object(response.data);
+      return BagCommandResult(
+        success: true,
+        message: (body['message'] as String?) ?? 'Mother Bag created.',
+        bag: MotherBagRecord.fromJson(_object(body['data'])),
+      );
+    } catch (error) {
+      if (error is DioException && error.response?.statusCode == 401) {
+        await storage.clearAuth();
+        _hubs = [];
+      }
+      return BagCommandResult(success: false, message: _message(error));
+    }
+  }
+
+  Future<BagCommandResult> motherBagCommand(
+    String bagId,
+    String action,
+    Map<String, dynamic> payload,
+  ) async {
+    try {
+      final response = await _dio.post(
+        '/api/v1/logistics/mother-bags/$bagId/$action',
+        options: _authorized,
+        data: {
+          ...payload,
+          'request_token': payload['request_token'] ?? newRequestToken(),
+        },
+      );
+      final body = _object(response.data);
+      return BagCommandResult(
+        success: true,
+        message: (body['message'] as String?) ?? 'Updated.',
+        bag: MotherBagRecord.fromJson(_object(body['data'])),
+      );
+    } catch (error) {
+      var needsMeasurements = false;
+      if (error is DioException) {
+        if (error.response?.statusCode == 401) {
+          await storage.clearAuth();
+          _hubs = [];
+        }
+        final data = error.response?.data;
+        if (data is Map && data['needs_measurements'] == true) {
+          needsMeasurements = true;
+        }
+      }
+      return BagCommandResult(
+        success: false,
+        message: _message(error),
+        needsMeasurements: needsMeasurements,
+      );
     }
   }
 }

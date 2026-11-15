@@ -11,6 +11,8 @@ class ScanResult {
   final String? nextFacility;
   final String? recommendedBin;
   final String? motherBagReference;
+  final String? bagId;
+  final bool isMasterBag;
   final String? sealNumber;
   final int? bagParcelCount;
   final int? bagMaxParcels;
@@ -33,6 +35,8 @@ class ScanResult {
     this.nextFacility,
     this.recommendedBin,
     this.motherBagReference,
+    this.bagId,
+    this.isMasterBag = false,
     this.sealNumber,
     this.bagParcelCount,
     this.bagMaxParcels,
@@ -77,6 +81,8 @@ class ScanResult {
       recommendedBin:
           text(hop?['recommended_bin']) ?? text(delivery?['destination_bin']),
       motherBagReference: text(bag?['reference']),
+      bagId: bag?['id']?.toString(),
+      isMasterBag: json['is_master_bag'] == true,
       sealNumber: text(bag?['seal_number']),
       bagParcelCount: bag?['parcel_count'] is int
           ? bag!['parcel_count'] as int
@@ -142,6 +148,7 @@ class ScanResult {
         nextFacility: 'Cavite Regional Mother Hub',
         recommendedBin: 'PALLET-CORRIDOR-04',
         motherBagReference: clean,
+        isMasterBag: true,
         sealNumber: 'SL-884019',
         bagParcelCount: 42,
         bagMaxParcels: 50,
