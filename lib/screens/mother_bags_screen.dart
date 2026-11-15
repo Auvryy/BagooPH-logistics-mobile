@@ -96,7 +96,7 @@ class _MotherBagsScreenState extends State<MotherBagsScreen> {
           api: widget.api,
           bagId: result.bag!.id,
           initialBag: result.bag,
-          manifests: _workspace?.manifests ?? const [],
+          vehicles: _workspace?.vehicles ?? const [],
         ),
       ),
     );
@@ -398,7 +398,7 @@ class _MotherBagsScreenState extends State<MotherBagsScreen> {
                           api: widget.api,
                           bagId: bag.id,
                           initialBag: bag,
-                          manifests: workspace.manifests,
+                          vehicles: workspace.vehicles,
                         ),
                       ),
                     );
