@@ -12,7 +12,7 @@ class BagPackingScreen extends StatefulWidget {
   final ApiService api;
   final String bagId;
   final MotherBagRecord? initialBag;
-  final List<ManifestOption> manifests;
+  final List<DispatchVehicle> vehicles;
 
   const BagPackingScreen({
     super.key,
@@ -20,7 +20,7 @@ class BagPackingScreen extends StatefulWidget {
     required this.api,
     required this.bagId,
     this.initialBag,
-    this.manifests = const [],
+    this.vehicles = const [],
   });
 
   @override
@@ -35,8 +35,9 @@ class _BagPackingScreenState extends State<BagPackingScreen> {
 
   MobileScannerController? _scannerController;
   MotherBagRecord? _bag;
-  List<ManifestOption> _manifests = const [];
-  int? _selectedManifestId;
+  List<DispatchVehicle> _vehicles = const [];
+  int? _vehicleId;
+  String? _dispatchToken;
   bool _loading = true;
   bool _busy = false;
   bool _cameraActive = false;
@@ -51,7 +52,7 @@ class _BagPackingScreenState extends State<BagPackingScreen> {
   void initState() {
     super.initState();
     _bag = widget.initialBag;
-    _manifests = widget.manifests;
+    _vehicles = widget.vehicles;
     _cameraActive = _bag?.status == 'open' && _bag?.canPack == true;
     if (_cameraActive) {
       _ensureScanner();
@@ -85,19 +86,21 @@ class _BagPackingScreenState extends State<BagPackingScreen> {
   Future<void> _refreshBag() async {
     try {
       final bag = await widget.api.fetchMotherBag(widget.bagId);
-      List<ManifestOption> manifests = _manifests;
-      if (manifests.isEmpty && bag.sourceHubId > 0) {
+      var vehicles = _vehicles;
+      if (bag.canPack &&
+          (bag.status == 'open' || bag.status == 'sealed') &&
+          bag.sourceHubId > 0) {
         try {
           final workspace = await widget.api.fetchMotherBags(
             hubId: bag.sourceHubId,
           );
-          manifests = workspace.manifests;
+          vehicles = workspace.vehicles;
         } catch (_) {}
       }
       if (!mounted) return;
       setState(() {
         _bag = bag;
-        _manifests = manifests;
+        _vehicles = vehicles;
         _loading = false;
         _openTagController.text = bag.reference;
         if (bag.sealNumber != null && _openSealController.text.isEmpty) {
@@ -436,23 +439,138 @@ class _BagPackingScreenState extends State<BagPackingScreen> {
     });
   }
 
-  Future<void> _loadToManifest() async {
+  /// Seal (when still open), put on the chosen truck and dispatch, all in one tap.
+  Future<void> _dispatch(List<DispatchVehicle> choices) async {
     final bag = _bag;
-    if (bag == null || _busy || _selectedManifestId == null) return;
+    if (bag == null || _busy) return;
+    final vehicleId = choices.any((v) => v.id == _vehicleId)
+        ? _vehicleId
+        : null;
+    final seal = bag.status == 'open'
+        ? _sealController.text.trim()
+        : (bag.sealNumber ?? '');
+    String? problem;
+    if (bag.status == 'open' && seal.isEmpty) {
+      problem = 'Scan or enter the printed seal number first.';
+    } else if (vehicleId == null) {
+      problem = 'Choose the truck carrying this bag.';
+    }
+    if (problem != null) {
+      setState(() {
+        _statusMessage = problem;
+        _statusIsError = true;
+      });
+      return;
+    }
+    final token = _dispatchToken ??= widget.api.newRequestToken();
     setState(() => _busy = true);
-    final result = await widget.api.motherBagCommand(bag.id, 'load', {
-      'version': bag.version,
-      'barcode': bag.reference,
-      'seal_number': bag.sealNumber ?? '',
-      'manifest_id': _selectedManifestId,
-    });
+    final result = await widget.api.dispatchMotherBag(
+      bag.id,
+      vehicleId: vehicleId!,
+      requestToken: token,
+      sealNumber: seal,
+    );
     if (!mounted) return;
     setState(() {
       _busy = false;
-      if (result.bag != null) _bag = result.bag;
+      if (result.success) _dispatchToken = null;
+      if (result.bag != null) {
+        _bag = result.bag;
+        _cameraActive = false;
+      }
       _statusMessage = result.message;
       _statusIsError = !result.success;
     });
+  }
+
+  Widget _truckPicker(List<DispatchVehicle> choices) {
+    if (choices.isEmpty) {
+      return const Text(
+        'No van or truck with a driver is free at this hub. Ask the hub to assign one, then refresh.',
+        style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final vehicle in choices)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Material(
+              color: vehicle.id == _vehicleId
+                  ? AppColors.primary.withValues(alpha: 0.06)
+                  : AppColors.surface,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+                side: BorderSide(
+                  color: vehicle.id == _vehicleId
+                      ? AppColors.primary
+                      : AppColors.border,
+                  width: vehicle.id == _vehicleId ? 1.5 : 1,
+                ),
+              ),
+              child: InkWell(
+                key: ValueKey('truck-${vehicle.id}'),
+                borderRadius: BorderRadius.circular(10),
+                onTap: _busy
+                    ? null
+                    : () => setState(() {
+                        _vehicleId = vehicle.id;
+                        _dispatchToken = null;
+                      }),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        vehicle.id == _vehicleId
+                            ? Icons.radio_button_checked
+                            : Icons.radio_button_unchecked,
+                        size: 20,
+                        color: vehicle.id == _vehicleId
+                            ? AppColors.primary
+                            : AppColors.textMuted,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              vehicle.plate,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            Text(
+                              [
+                                vehicle.typeLabel,
+                                if (vehicle.driver != null) vehicle.driver!,
+                              ].join(' · '),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
   }
 
   Future<void> _openArrivingBag() async {
@@ -496,13 +614,14 @@ class _BagPackingScreenState extends State<BagPackingScreen> {
     }
 
     final activeParcels = bag.parcels.where((p) => !p.removed).toList();
-    final matchingManifests = _manifests
-        .where(
-          (m) =>
-              m.sourceHubId == bag.sourceHubId &&
-              m.destinationHubId == bag.destinationHubId,
-        )
-        .toList();
+    final trucks = DispatchVehicle.forLeg(
+      _vehicles,
+      bag.source,
+      bag.destination,
+    );
+    if (_vehicleId == null && trucks.length == 1) _vehicleId = trucks.single.id;
+    final destinationName =
+        bag.destination?.code ?? bag.destination?.name ?? 'next hub';
     final cap = bag.capacity;
 
     return Scaffold(
@@ -746,16 +865,11 @@ class _BagPackingScreenState extends State<BagPackingScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Text(
-                    'Seal & Ready for Dispatch',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
-                  ),
-                  const SizedBox(height: 6),
-                  const Text(
-                    'Scan the printed security seal with the camera or type SL-XXXXX.',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textSecondary,
+                  Text(
+                    'Seal & dispatch to $destinationName',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -764,6 +878,7 @@ class _BagPackingScreenState extends State<BagPackingScreen> {
                       Expanded(
                         child: TextField(
                           controller: _sealController,
+                          onChanged: (_) => _dispatchToken = null,
                           decoration: const InputDecoration(
                             labelText: 'Seal number',
                             hintText: 'SL-XXXXX',
@@ -780,6 +895,7 @@ class _BagPackingScreenState extends State<BagPackingScreen> {
                                 onCaptured: (code) {
                                   setState(() {
                                     _sealController.text = code;
+                                    _dispatchToken = null;
                                   });
                                 },
                               ),
@@ -788,17 +904,32 @@ class _BagPackingScreenState extends State<BagPackingScreen> {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Truck',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 6),
+                  _truckPicker(trucks),
                   const SizedBox(height: 10),
                   FilledButton.icon(
-                    onPressed: (_busy || activeParcels.isEmpty)
+                    key: const ValueKey('seal-and-dispatch'),
+                    onPressed:
+                        (_busy || activeParcels.isEmpty || trucks.isEmpty)
                         ? null
-                        : _sealBag,
+                        : () => _dispatch(trucks),
                     style: FilledButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
-                    icon: const Icon(Icons.lock_outline, size: 18),
-                    label: const Text('Seal Bag (Ready for Dispatch)'),
+                    icon: const Icon(Icons.local_shipping_outlined, size: 18),
+                    label: const Text('Seal & dispatch'),
+                  ),
+                  TextButton(
+                    onPressed: (_busy || activeParcels.isEmpty)
+                        ? null
+                        : _sealBag,
+                    child: const Text('Seal only, dispatch later'),
                   ),
                 ],
               ),
@@ -818,61 +949,36 @@ class _BagPackingScreenState extends State<BagPackingScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    'Sealed & Ready · ${bag.sealNumber ?? ""}',
+                    'Sealed · ${bag.sealNumber ?? ""}',
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w800,
                       color: AppColors.success,
                     ),
                   ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Pick the truck and dispatch to $destinationName.',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
                   const SizedBox(height: 10),
-                  if (matchingManifests.isNotEmpty) ...[
-                    DropdownButtonFormField<int>(
-                      initialValue: _selectedManifestId,
-                      isExpanded: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Select Draft Manifest / Truck',
-                        isDense: true,
-                      ),
-                      selectedItemBuilder: (context) => matchingManifests
-                          .map(
-                            (m) => Text(
-                              '${m.reference}${m.vehiclePlate != null ? " (${m.vehiclePlate})" : ""}',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          )
-                          .toList(),
-                      items: matchingManifests
-                          .map(
-                            (m) => DropdownMenuItem<int>(
-                              value: m.id,
-                              child: Text(
-                                '${m.reference}${m.vehiclePlate != null ? " (${m.vehiclePlate})" : ""}',
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: (v) => setState(() => _selectedManifestId = v),
+                  _truckPicker(trucks),
+                  const SizedBox(height: 10),
+                  FilledButton.icon(
+                    key: const ValueKey('dispatch-sealed'),
+                    onPressed: (_busy || trucks.isEmpty)
+                        ? null
+                        : () => _dispatch(trucks),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
-                    const SizedBox(height: 10),
-                    FilledButton.icon(
-                      onPressed: (_busy || _selectedManifestId == null)
-                          ? null
-                          : _loadToManifest,
-                      icon: const Icon(Icons.local_shipping_outlined),
-                      label: const Text('Load Bag onto Manifest'),
-                    ),
-                  ] else
-                    const Text(
-                      'No draft manifest matches this bag route yet. Create a manifest on the hub portal or load at dispatch dock.',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
+                    icon: const Icon(Icons.local_shipping_outlined, size: 18),
+                    label: Text('Dispatch to $destinationName'),
+                  ),
                 ],
               ),
             ),

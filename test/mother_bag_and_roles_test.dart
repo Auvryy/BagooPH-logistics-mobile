@@ -319,6 +319,15 @@ void main() {
               },
             ],
             'manifests': [],
+            'vehicles': [
+              {
+                'id': 99,
+                'hub_id': 11,
+                'plate': 'ABC-123456-ISUZU-WINGVAN-EXTRA-LONG',
+                'type': 'l300_van',
+                'driver': 'Driver With A Very Long Full Name Here',
+              },
+            ],
             'presets': [
               {
                 'key': 'standard',
@@ -397,13 +406,12 @@ void main() {
           storage: storage,
           api: api,
           bagId: 'bag-long-1',
-          manifests: [
-            ManifestOption(
+          vehicles: const [
+            DispatchVehicle(
               id: 99,
-              reference: 'MAN-20261115-LONG-TRUCK-DISPATCH-0099',
-              sourceHubId: 11,
-              destinationHubId: 8,
-              vehiclePlate: 'ABC-123456-ISUZU-WINGVAN',
+              plate: 'ABC-123456-ISUZU-WINGVAN-EXTRA-LONG',
+              type: 'l300_van',
+              driver: 'Driver With A Very Long Full Name Here',
             ),
           ],
         ),
@@ -411,11 +419,155 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
-    expect(find.textContaining('Sealed & Ready'), findsOneWidget);
+    expect(find.textContaining('Sealed ·'), findsOneWidget);
+    expect(find.text('ABC-123456-ISUZU-WINGVAN-EXTRA-LONG'), findsOneWidget);
     expect(
       find.textContaining('BGO-WAYBILL-VERY-LONG-TRACKING-00001'),
       findsOneWidget,
     );
     await tester.pumpWidget(const SizedBox.shrink());
   });
+
+  testWidgets(
+    'one tap seals, loads and dispatches the bag on the chosen truck',
+    (tester) async {
+      final dispatched = <Map<String, dynamic>>[];
+      Map<String, dynamic> bagJson(String status) => {
+        'id': 'bag-go-1',
+        'reference': 'MB-GO-0001',
+        'status': status,
+        'seal_number': status == 'open' ? null : 'SL-7788',
+        'version': status == 'open' ? 3 : 5,
+        'source_hub_id': 11,
+        'destination_hub_id': 8,
+        'capacity_preset': 'compact',
+        'parcels_count': 1,
+        'can_pack': true,
+        'can_open': false,
+        'source': {
+          'id': 11,
+          'name': 'Los Banos Bayan Hub',
+          'code': 'BH-LBN-01',
+          'tier': 'local_bayan_hub',
+        },
+        'destination': {
+          'id': 8,
+          'name': 'Laguna Mother Hub',
+          'code': 'MH-LAG-01',
+          'tier': 'regional_mother_hub',
+        },
+        'parcels': [
+          {
+            'id': 1,
+            'tracking_number': 'BGO-ONE-0001',
+            'status': 'arrived_at_origin_hub',
+            'removed': false,
+            'received': false,
+          },
+        ],
+      };
+      final adapter = ReplyAdapter((request) {
+        if (request.path.endsWith('/tokens')) return jsonReply(account());
+        if (request.path == '/api/v1/logistics/mother-bags') {
+          return jsonReply({
+            'data': {
+              'hub': {'id': 11, 'job_role': 'pack_dispatch'},
+              'bags': [],
+              'next_hubs': [],
+              'manifests': [],
+              'presets': [],
+              'vehicles': [
+                {
+                  'id': 41,
+                  'hub_id': 11,
+                  'plate': 'VAN-4101',
+                  'type': 'l300_van',
+                  'driver': 'Dina Driver',
+                },
+                {
+                  'id': 42,
+                  'hub_id': 11,
+                  'plate': 'WING-4202',
+                  'type': 'wing_truck',
+                  'driver': 'Lino Linehaul',
+                },
+              ],
+            },
+          });
+        }
+        if (request.path == '/api/v1/logistics/mother-bags/bag-go-1/dispatch') {
+          dispatched.add(Map<String, dynamic>.from(request.data as Map));
+          return jsonReply({
+            'message': 'Bag sealed and dispatched on MAN-0001.',
+            'data': bagJson('in_transit'),
+            'manifest': {
+              'id': 1,
+              'reference': 'MAN-0001',
+              'status': 'dispatched',
+            },
+          });
+        }
+        if (request.path == '/api/v1/logistics/mother-bags/bag-go-1') {
+          return jsonReply({'data': bagJson('sealed')});
+        }
+        return jsonReply({'data': {}});
+      });
+
+      final api = service(adapter);
+      await tester.runAsync(
+        () => api.login('operator@bagoo.test', 'Password1234'),
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          home: BagPackingScreen(
+            storage: storage,
+            api: api,
+            bagId: 'bag-go-1',
+            initialBag: MotherBagRecord.fromJson(bagJson('sealed')),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      // A Bayan Hub to Mother Hub run is a feeder leg: only the van is offered, and it is picked for you.
+      expect(find.text('VAN-4101'), findsOneWidget);
+      expect(find.text('WING-4202'), findsNothing);
+
+      await tester.tap(find.byKey(const ValueKey('dispatch-sealed')));
+      await tester.pumpAndSettle();
+      expect(dispatched, hasLength(1));
+      expect(dispatched.single['vehicle_id'], 41);
+      expect(dispatched.single['seal_number'], 'SL-7788');
+      expect(dispatched.single['request_token'], isA<String>());
+      expect(
+        find.text('Bag sealed and dispatched on MAN-0001.'),
+        findsOneWidget,
+      );
+      expect(find.byKey(const ValueKey('dispatch-sealed')), findsNothing);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
+
+  test(
+    'dispatch API reports a refused dispatch without losing the bag',
+    () async {
+      final adapter = ReplyAdapter((request) {
+        if (request.path.endsWith('/tokens')) return jsonReply(account());
+        return jsonReply({
+          'message': 'Choose the truck carrying this bag.',
+        }, 422);
+      });
+      final api = service(adapter);
+      await api.login('operator@bagoo.test', 'Password1234');
+      final result = await api.dispatchMotherBag(
+        'bag-x',
+        vehicleId: 1,
+        requestToken: api.newRequestToken(),
+        sealNumber: 'SL-1',
+      );
+      expect(result.success, false);
+      expect(result.message, 'Choose the truck carrying this bag.');
+      expect(result.bag, isNull);
+    },
+  );
 }

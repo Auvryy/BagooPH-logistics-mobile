@@ -447,4 +447,38 @@ class ApiService {
       );
     }
   }
+
+  /// Seals the bag (if still open), builds its manifest for [vehicleId], loads it and dispatches, in one call.
+  /// Reuse the same [requestToken] when retrying so a double tap never sends the bag twice.
+  Future<BagCommandResult> dispatchMotherBag(
+    String bagId, {
+    required int vehicleId,
+    required String requestToken,
+    String? sealNumber,
+  }) async {
+    try {
+      final response = await _dio.post(
+        '/api/v1/logistics/mother-bags/$bagId/dispatch',
+        options: _authorized,
+        data: {
+          'vehicle_id': vehicleId,
+          'request_token': requestToken,
+          if (sealNumber != null && sealNumber.isNotEmpty)
+            'seal_number': sealNumber,
+        },
+      );
+      final body = _object(response.data);
+      return BagCommandResult(
+        success: true,
+        message: (body['message'] as String?) ?? 'Bag dispatched.',
+        bag: MotherBagRecord.fromJson(_object(body['data'])),
+      );
+    } catch (error) {
+      if (error is DioException && error.response?.statusCode == 401) {
+        await storage.clearAuth();
+        _hubs = [];
+      }
+      return BagCommandResult(success: false, message: _message(error));
+    }
+  }
 }

@@ -72,6 +72,51 @@ class ManifestOption {
   );
 }
 
+/// A van or truck at this hub that has a driver and is not already on the road.
+class DispatchVehicle {
+  final int id;
+  final String plate;
+  final String type;
+  final String? driver;
+
+  const DispatchVehicle({
+    required this.id,
+    required this.plate,
+    required this.type,
+    this.driver,
+  });
+
+  String get typeLabel => switch (type) {
+    'wing_truck' => 'Wing truck',
+    'l300_van' => 'Closed van',
+    _ => type.replaceAll('_', ' '),
+  };
+
+  factory DispatchVehicle.fromJson(Map<String, dynamic> json) =>
+      DispatchVehicle(
+        id: (json['id'] as num?)?.toInt() ?? 0,
+        plate: (json['plate'] as String?) ?? '',
+        type: (json['type'] as String?) ?? '',
+        driver: json['driver'] as String?,
+      );
+
+  /// Mother Hub to Mother Hub runs on a wing truck; every other leg uses a closed van.
+  static List<DispatchVehicle> forLeg(
+    List<DispatchVehicle> vehicles,
+    NextHubOption? source,
+    NextHubOption? destination,
+  ) {
+    final sourceTier = source?.tier ?? '';
+    final destinationTier = destination?.tier ?? '';
+    if (sourceTier.isEmpty || destinationTier.isEmpty) return vehicles;
+    const mother = 'regional_mother_hub';
+    final type = sourceTier == mother && destinationTier == mother
+        ? 'wing_truck'
+        : 'l300_van';
+    return vehicles.where((v) => v.type == type).toList();
+  }
+}
+
 class BagCapacity {
   final int count;
   final double? weightKg;
@@ -209,6 +254,7 @@ class BagWorkspaceData {
   final List<NextHubOption> nextHubs;
   final List<ManifestOption> manifests;
   final List<BagPreset> presets;
+  final List<DispatchVehicle> vehicles;
 
   const BagWorkspaceData({
     required this.jobRole,
@@ -218,6 +264,7 @@ class BagWorkspaceData {
     required this.nextHubs,
     required this.manifests,
     required this.presets,
+    this.vehicles = const [],
   });
 
   factory BagWorkspaceData.fromJson(Map<String, dynamic> json) {
@@ -241,6 +288,7 @@ class BagWorkspaceData {
           .map(ManifestOption.fromJson)
           .toList(),
       presets: listOf(json['presets']).map(BagPreset.fromJson).toList(),
+      vehicles: listOf(json['vehicles']).map(DispatchVehicle.fromJson).toList(),
     );
   }
 }
