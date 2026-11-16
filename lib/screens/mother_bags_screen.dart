@@ -4,6 +4,7 @@ import '../models/mother_bag.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
 import '../theme/app_colors.dart';
+import '../widgets/number_formatters.dart';
 import 'bag_packing_screen.dart';
 
 class MotherBagsScreen extends StatefulWidget {
@@ -259,6 +260,7 @@ class _MotherBagsScreenState extends State<MotherBagsScreen> {
                           child: TextField(
                             controller: _maxCount,
                             keyboardType: TextInputType.number,
+                            inputFormatters: wholeNumberFormatters,
                             decoration: const InputDecoration(
                               labelText: 'Max parcels',
                               isDense: true,
@@ -272,6 +274,7 @@ class _MotherBagsScreenState extends State<MotherBagsScreen> {
                             keyboardType: const TextInputType.numberWithOptions(
                               decimal: true,
                             ),
+                            inputFormatters: decimalFormatters(),
                             decoration: const InputDecoration(
                               labelText: 'Max kg',
                               isDense: true,
@@ -285,6 +288,7 @@ class _MotherBagsScreenState extends State<MotherBagsScreen> {
                             keyboardType: const TextInputType.numberWithOptions(
                               decimal: true,
                             ),
+                            inputFormatters: decimalFormatters(),
                             decoration: const InputDecoration(
                               labelText: 'Max m³',
                               isDense: true,

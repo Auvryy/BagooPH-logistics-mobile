@@ -6,6 +6,7 @@ import '../models/mother_bag.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
 import '../theme/app_colors.dart';
+import '../widgets/number_formatters.dart';
 
 class BagPackingScreen extends StatefulWidget {
   final StorageService storage;
@@ -225,6 +226,7 @@ class _BagPackingScreenState extends State<BagPackingScreen> {
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
+              inputFormatters: decimalFormatters(),
               decoration: const InputDecoration(labelText: 'Weight (kg)'),
             ),
             Row(
@@ -235,6 +237,7 @@ class _BagPackingScreenState extends State<BagPackingScreen> {
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
+                    inputFormatters: decimalFormatters(),
                     decoration: const InputDecoration(labelText: 'L (cm)'),
                   ),
                 ),
@@ -245,6 +248,7 @@ class _BagPackingScreenState extends State<BagPackingScreen> {
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
+                    inputFormatters: decimalFormatters(),
                     decoration: const InputDecoration(labelText: 'W (cm)'),
                   ),
                 ),
@@ -255,6 +259,7 @@ class _BagPackingScreenState extends State<BagPackingScreen> {
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
+                    inputFormatters: decimalFormatters(),
                     decoration: const InputDecoration(labelText: 'H (cm)'),
                   ),
                 ),
