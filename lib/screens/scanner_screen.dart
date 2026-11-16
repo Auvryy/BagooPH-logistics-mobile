@@ -260,6 +260,8 @@ class _ScannerScreenState extends State<ScannerScreen> {
     final result = _lastResult;
 
     return Scaffold(
+      // Typing happens in a dialog; keep the scanner layout fixed when the keyboard opens.
+      resizeToAvoidBottomInset: false,
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: AppColors.surface,
