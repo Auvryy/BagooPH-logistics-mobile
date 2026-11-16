@@ -140,7 +140,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const Text(
-              'Enter waybill or container barcode or choose a preset test code:',
+              'Enter the waybill or bag code printed on the label.',
               style: TextStyle(
                 fontFamily: 'Plus Jakarta Sans',
                 fontSize: 12,
@@ -158,7 +158,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
                 color: AppColors.textPrimary,
               ),
               decoration: InputDecoration(
-                hintText: 'e.g. BG-DEL-8921829',
+                hintText: 'e.g. BGO-8D8O4ZSCL4',
                 hintStyle: const TextStyle(color: AppColors.textMuted),
                 filled: true,
                 fillColor: AppColors.surfaceElevated,
@@ -172,17 +172,20 @@ class _ScannerScreenState extends State<ScannerScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 14),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: [
-                _buildQuickCodeChip('BG-DEL-40291'),
-                _buildQuickCodeChip('BAG-20261108-001'),
-                _buildQuickCodeChip('SL-884019'),
-                _buildQuickCodeChip('ERR-BACKHAUL'),
-              ],
-            ),
+            // Sample codes only in the offline demo; live hubs type real labels.
+            if (widget.storage.isDemoMode()) ...[
+              const SizedBox(height: 14),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  _buildQuickCodeChip('BG-DEL-40291'),
+                  _buildQuickCodeChip('BAG-20261108-001'),
+                  _buildQuickCodeChip('SL-884019'),
+                  _buildQuickCodeChip('ERR-BACKHAUL'),
+                ],
+              ),
+            ],
           ],
         ),
         actions: [
@@ -580,7 +583,11 @@ class _ScannerScreenState extends State<ScannerScreen> {
             OutlinedButton.icon(
               onPressed: _showManualEntryDialog,
               icon: const Icon(Icons.add, size: 16),
-              label: const Text('Simulate Scan Code'),
+              label: Text(
+                widget.storage.isDemoMode()
+                    ? 'Simulate Scan Code'
+                    : 'Type code instead',
+              ),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.textPrimary,
                 side: const BorderSide(color: AppColors.borderLight),
@@ -600,6 +607,8 @@ class _ScannerScreenState extends State<ScannerScreen> {
     final isErr = r.isError;
     final chute = r.chute ?? 'CHUTE-01';
     final bin = r.recommendedBin ?? 'BIN-DEFAULT';
+    // Show the target once when the chute and bin are the same place.
+    final target = chute == bin ? bin : '$chute → $bin';
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
@@ -649,7 +658,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
-                        isErr ? 'REJECT' : (r.action ?? 'INSPECTED'),
+                        isErr ? 'REJECT' : _actionLabel(r.action),
                         style: const TextStyle(
                           fontFamily: 'Plus Jakarta Sans',
                           fontSize: 10,
@@ -664,7 +673,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
 
                 // GIANT TEXT: CHUTE & BIN
                 Text(
-                  isErr ? 'DO NOT INDUCT' : '$chute → $bin',
+                  isErr ? 'DO NOT INDUCT' : target,
                   style: TextStyle(
                     fontFamily: 'Plus Jakarta Sans',
                     fontSize: 28,
@@ -985,4 +994,11 @@ class _ScannerScreenState extends State<ScannerScreen> {
       ),
     );
   }
+}
+
+/// AWAIT_BARANGAY_SORT -> "Await barangay sort": staff read words, not codes.
+String _actionLabel(String? action) {
+  if (action == null || action.trim().isEmpty) return 'Inspected';
+  final words = action.trim().replaceAll(RegExp(r'[_\-]+'), ' ').toLowerCase();
+  return words[0].toUpperCase() + words.substring(1);
 }
